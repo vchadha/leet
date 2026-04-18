@@ -1,7 +1,8 @@
 class Solution:
     def twoSum(self, nums: list[int], target: int) -> list[int]:
         """
-        Find the indices of the two numbers in the input list that add up to the target value.
+        Find the indices of the first two numbers in the input list that add up to the target value.
+        Raise an error if no such pair exists.
         """
         # Dict to store the complement of each number and its index
         complement_dict: dict[int, int] = {}

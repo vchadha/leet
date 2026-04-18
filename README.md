@@ -19,6 +19,11 @@ A collection of solutions to programming puzzles implemented in Python.
 **Problem:** Calculate the absolute difference between an integer and its digit-reversed counterpart.      
 **Complexity:** O(log n) time, O(1) space.      
 
+### 2️⃣ Two Sum
+**File:** `two_sum.py`        
+**Problem:** Find the indices of two numbers in an array that add up to a target value.      
+**Complexity:** O(n) time, O(n) space.     
+
 ## Requirements
 
 - Python 3.13+
