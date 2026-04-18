@@ -2,24 +2,9 @@ class Solution:
     IS_ALIVE: int = 1
     IS_DEAD: int = 0
 
-    def isAlive(self, board: list[list[int]], i: int, j: int) -> bool:
-        if i < 0 or i >= len(board) or j < 0 or j >= len(board[0]):
-            return False
-        
-        return board[i][j] == Solution.IS_ALIVE
-
-    def countAliveNeighbors(self, board: list[list[int]], i: int, j: int) -> int:
-        num_alive_neighbors: int = 0
-
-        # Check all 8 neighbors
-        for di in [-1, 0, 1]:
-            for dj in [-1, 0, 1]:
-                if di == 0 and dj == 0:
-                    continue
-                if self.isAlive(board, i + di, j + dj):
-                    num_alive_neighbors += 1
-
-        return num_alive_neighbors
+    # TODO: new approach - compute what each cell should be in the next state
+    # and store that ONLY if it is different from the current state.
+    # dict of (i, j) -> new_value
 
     def gameOfLife(self, board: list[list[int]]) -> None:
         """
@@ -44,6 +29,25 @@ class Solution:
                     if num_alive_neighbors == 3:
                         board[i][j] = Solution.IS_ALIVE
                     # Else -> no-op
+
+    def isAlive(self, board: list[list[int]], i: int, j: int) -> bool:
+        if i < 0 or i >= len(board) or j < 0 or j >= len(board[0]):
+            return False
+        
+        return board[i][j] == Solution.IS_ALIVE
+
+    def countAliveNeighbors(self, board: list[list[int]], i: int, j: int) -> int:
+        num_alive_neighbors: int = 0
+
+        # Check all 8 neighbors
+        for di in [-1, 0, 1]:
+            for dj in [-1, 0, 1]:
+                if di == 0 and dj == 0:
+                    continue
+                if self.isAlive(board, i + di, j + dj):
+                    num_alive_neighbors += 1
+
+        return num_alive_neighbors
         
 board = [[0,1,0],[0,0,1],[1,1,1],[0,0,0]]
 expected_board = [[0,0,0],[1,0,1],[0,1,1],[0,1,0]]
