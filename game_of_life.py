@@ -1,6 +1,7 @@
 class Solution:
     IS_ALIVE: int = 1
     IS_DEAD: int = 0
+    NEIGHBOR_OFFSETS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
     def gameOfLife(self, board: list[list[int]]) -> None:
         """
@@ -43,19 +44,8 @@ class Solution:
         """
         Count the number of alive neighbors for a given cell
         """
-        num_alive_neighbors: int = 0
-
-        # Check all 8 neighbors
-        for di in [-1, 0, 1]:
-            for dj in [-1, 0, 1]:
-                if di == 0 and dj == 0:
-                    continue
-                if self.isAlive(board, i + di, j + dj):
-                    num_alive_neighbors += 1
-
-        return num_alive_neighbors
+        return sum(1 for di, dj in Solution.NEIGHBOR_OFFSETS if self.isAlive(board, i + di, j + dj))
         
-
 # Test cases
 # Create a single instance of the solution to run test cases
 solution = Solution()
