@@ -10,25 +10,29 @@ class Solution:
         """
         Do not return anything, modify board in-place instead.
         """
-        old_board: list[list[int]] = [row.copy() for row in board]
+        updated_cells: dict[tuple[int, int], int] = {}
 
         for i in range(len(board)):
             for j in range(len(board[0])):
-                num_alive_neighbors: int = self.countAliveNeighbors(old_board, i, j)
+                num_alive_neighbors: int = self.countAliveNeighbors(board, i, j)
 
                 # If I am alive
-                if self.isAlive(old_board, i, j):
+                if self.isAlive(board, i, j):
                     # Underpopulation or overpopulation leads to death
                     if num_alive_neighbors < 2 or num_alive_neighbors > 3:
-                        board[i][j] = Solution.IS_DEAD
+                        updated_cells[(i, j)] = Solution.IS_DEAD
                     # Else -> no-op
 
                 # If I am dead
                 else:
                     # I can ressurect!
                     if num_alive_neighbors == 3:
-                        board[i][j] = Solution.IS_ALIVE
+                        updated_cells[(i, j)] = Solution.IS_ALIVE
                     # Else -> no-op
+        
+        # Update board with new values
+        for (i, j), new_value in updated_cells.items():
+            board[i][j] = new_value
 
     def isAlive(self, board: list[list[int]], i: int, j: int) -> bool:
         if i < 0 or i >= len(board) or j < 0 or j >= len(board[0]):
