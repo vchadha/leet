@@ -1,4 +1,3 @@
-import scala.collection.View.Fill
 object Constants {
   // Constants for the Sudoku board
   val BoardSize: Int = 9
@@ -14,7 +13,7 @@ case object Empty extends Candidates
 case class NonEmpty(values: Set[Filled]) extends Candidates
 
 object Candidates {
-  // Smart constructor — returns Empty if the set is empty
+  // Smart constructor — returns Empty if the set is blank
   def apply(values: Set[Filled]): Candidates =
     if values.isEmpty then Empty
     else NonEmpty(values)
@@ -34,18 +33,16 @@ object Candidates {
 // Sealed trait to represent cell values
 sealed trait Cell
 case object Blank extends Cell
-case object Invalid extends Cell
 case class Filled(digit: Char) extends Cell
 
 object Cell {
-  def fromChar(c: Char): Cell = c match
-    case Constants.BlankCellChar => Blank
-    case d             => Filled.fromChar(d).getOrElse(Invalid)
+  def fromChar(c: Char): Option[Cell] = c match
+    case Constants.BlankCellChar => Some(Blank)
+    case d                       => Filled.fromChar(d)
 
-  def toChar(cell: Cell): Either[ValidationError, Char] = cell match
-    case Blank     => Right(Constants.BlankCellChar)
-    case Filled(d) => Right(d)
-    case Invalid => Left(ValidationError.InvalidCellConversion())
+  def toChar(cell: Cell): Char = cell match
+    case Blank     => Constants.BlankCellChar
+    case Filled(d) => d
 }
 
 object Filled {
@@ -67,11 +64,8 @@ object ValidationError {
     def message = s"Board must be ${Constants.BoardSize}x${Constants.BoardSize}"
   }
 
-  case class InvalidCellConversion() extends ValidationError {
-    def message = "Attempted to convert cell of type Invalid to Char"
-  }
-
-  case class InvalidCell(row: Int, col: Int, char: Char) extends ValidationError {
+  case class InvalidCell(row: Int, col: Int, char: Char)
+      extends ValidationError {
     def message = s"Invalid character '$char' at ($row, $col)"
   }
 
@@ -89,68 +83,90 @@ object ValidationError {
 }
 
 object Solution {
-  // TODO: make naming consistent
 
-  /** Solves a given Sudoku puzzle by filling the empty cells. Modifies the
+  /** Solves a given Sudoku puzzle by filling the blank cells. Modifies the
     * input board in-place.
     *
     * @param board
-    *   A 9x9 2D array representing the Sudoku board, where empty cells are
+    *   A 9x9 2D array representing the Sudoku board, where blank cells are
     *   denoted by '.'.
     */
   def solveSudoku(board: Array[Array[Char]]): Unit = {
-    // Convert board characters to Cell types for easier processing
-    val cellBoard: Array[Array[Cell]] = board.map(_.map(Cell.fromChar))
-
-    // Validate the initial board state
-    validateBoard(cellBoard) match
+    val cellBoard: Array[Array[Cell]] = (for {
+      converted <- convertBoard(board)
+      _ <- validateBoard(converted)
+    } yield converted) match
       case Left(errors) =>
         val message = errors.map(_.message).mkString("\n")
         throw new IllegalArgumentException(s"Invalid board:\n$message")
-      case Right(_) =>
-        // Initialize sets for rows, columns, and subboxes, and get empty cell locations
-        val (rowSets, colSets, boxSets, emptyCellLocationSet) =
-          initializeSolutionSets(cellBoard)
+      case Right(board) => board
 
-        // Create a map of possible values for each empty cell
-        val emptyCellSolutionSet = emptyCellLocationSet.map { location =>
-          val boxIndex = getBoxIndex(location.row, location.col)
+    // Initialize sets for rows, columns, and subboxes, and get blank cell locations
+    val (rowSets, colSets, boxSets, blankCellLocationSet) =
+      initializeSolutionSets(cellBoard)
 
-          val possibleValues =
-            Filled.validFilled -- rowSets(location.row) -- colSets(location.col) -- boxSets(boxIndex)
+    // Create a map of possible values for each blank cell
+    val blankCellSolutionSet = blankCellLocationSet.map { location =>
+      val boxIndex = getBoxIndex(location)
 
-          location -> Candidates(possibleValues)
-        }.toMap
+      val possibleValues =
+        Filled.validFilled -- rowSets(location.row) -- colSets(
+          location.col
+        ) -- boxSets(boxIndex)
 
-        // Populate the board with values until we find a solution
-        if !populateBoard(
-            cellBoard,
-            rowSets,
-            colSets,
-            boxSets,
-            emptyCellLocationSet,
-            emptyCellSolutionSet
-          )
-        then
-          throw new IllegalStateException(
-            "No solution exists for the given Sudoku board"
-          )
+      location -> Candidates(possibleValues)
+    }.toMap
 
-        // Convert the cell board back to characters for the final output
-        for {
-          row <- 0 until Constants.BoardSize
-          col <- 0 until Constants.BoardSize
-        } board(row)(col) = Cell.toChar(cellBoard(row)(col))
+    // Populate the board with values until we find a solution
+    if !populateBoard(
+        cellBoard,
+        rowSets,
+        colSets,
+        boxSets,
+        blankCellLocationSet,
+        blankCellSolutionSet
+      )
+    then
+      throw new IllegalStateException(
+        "No solution exists for the given Sudoku board"
+      )
+
+    // Convert the cell board back to characters for the final output
+    for {
+      row <- 0 until Constants.BoardSize
+      col <- 0 until Constants.BoardSize
+    } board(row)(col) = Cell.toChar(cellBoard(row)(col))
+  }
+
+  private def convertBoard(
+      board: Array[Array[Char]]
+  ): Either[List[ValidationError], Array[Array[Cell]]] = {
+    val results: Array[Array[Either[ValidationError, Cell]]] =
+      board.zipWithIndex.map { case (row, rowIndex) =>
+        row.zipWithIndex.map { case (char, colIndex) =>
+          Cell
+            .fromChar(char)
+            .toRight(ValidationError.InvalidCell(rowIndex, colIndex, char))
+        }
+      }
+
+    val errors = results.flatten.collect { case Left(e) => e }.toList
+
+    // TODO: we can do better here.
+    if errors.isEmpty then Right(results.map(_.map(_.getOrElse(Blank))))
+    else Left(errors)
   }
 
   private def findDuplicates(
-    cells: List[Cell],
-    makeError: (Char) => ValidationError
+      cells: List[Cell],
+      makeError: (Char) => ValidationError
   ): List[ValidationError] = {
     val filled = cells.collect { case Filled(d) => d }
     filled
       .groupBy(identity)
-      .collect { case (digit, occurrences) if occurrences.length > 1 => makeError(digit) }
+      .collect {
+        case (digit, occurrences) if occurrences.length > 1 => makeError(digit)
+      }
       .toList
   }
 
@@ -164,40 +180,42 @@ object Solution {
     * @return
     *   True if board is valid else False
     */
-  def validateBoard(board: Array[Array[Cell]]): Either[List[ValidationError], Unit] = {
+  def validateBoard(
+      board: Array[Array[Cell]]
+  ): Either[List[ValidationError], Unit] = {
     // Check if the board is 9x9
     val dimensionErrors: List[ValidationError] =
-      if board.length != Constants.BoardSize || board.exists(_.length != Constants.BoardSize)
+      if board.length != Constants.BoardSize || board.exists(
+          _.length != Constants.BoardSize
+        )
       then List(ValidationError.InvalidBoardSize)
       else Nil
 
-    val valueErrors: List[ValidationError] =
-      (for {
-        (row, rowIndex) <- board.zipWithIndex
-        (cell, colIndex) <- row.zipWithIndex
-        error <- cell match {
-          case Blank     => None
-          case Filled => None
-          case Invalid => Some(ValidationError.InvalidCell(rowIndex, colIndex, '?'))
-        }
-      } yield error).toList
-
     val rowErrors: List[ValidationError] =
       board.zipWithIndex.flatMap { case (row, rowIndex) =>
-        findDuplicates(row.toList, char => ValidationError.DuplicateInRow(rowIndex, char))
+        findDuplicates(
+          row.toList,
+          char => ValidationError.DuplicateInRow(rowIndex, char)
+        )
       }.toList
-    
+
     val colErrors: List[ValidationError] =
       board.transpose.zipWithIndex.flatMap { case (col, colIndex) =>
-        findDuplicates(col.toList, char => ValidationError.DuplicateInCol(colIndex, char))
+        findDuplicates(
+          col.toList,
+          char => ValidationError.DuplicateInCol(colIndex, char)
+        )
       }.toList
 
     val boxErrors: List[ValidationError] =
       getSubBoxCells(board).zipWithIndex.flatMap { case (box, boxIndex) =>
-        findDuplicates(box, char => ValidationError.DuplicateInBox(boxIndex, char))
+        findDuplicates(
+          box,
+          char => ValidationError.DuplicateInBox(boxIndex, char)
+        )
       }.toList
 
-    val allErrors = dimensionErrors ++ valueErrors ++ rowErrors ++ colErrors ++ boxErrors
+    val allErrors = dimensionErrors ++ rowErrors ++ colErrors ++ boxErrors
 
     if allErrors.isEmpty then Right(()) else Left(allErrors)
   }
@@ -209,7 +227,7 @@ object Solution {
     * @return
     *   List of List of Chars. Each list contains the values of a subbox
     */
-  def getSubBoxCells(board: Array[Array[Cell]]): List[List[Cell]] = {
+  private def getSubBoxCells(board: Array[Array[Cell]]): List[List[Cell]] = {
     Constants.SubBoxIndices
       .map(subBoxIndex =>
         val rowStart = (subBoxIndex / Constants.BoxSize) * Constants.BoxSize
@@ -226,8 +244,6 @@ object Solution {
       .toList
   }
 
-  // TODO: do i need this?
-  // TODO: think of types in the entire program - should i use something else?
   /** Get the index of the sub square for a given row and column.
     *
     * | 0   | 1   | 2   |
@@ -243,8 +259,8 @@ object Solution {
     * @return
     *   Index of the sub square (0 to 8)
     */
-  private def getBoxIndex(row: Int, col: Int): Int =
-    (row / Constants.BoxSize) * Constants.BoxSize + (col / Constants.BoxSize)
+  private def getBoxIndex(loc: Location): Int =
+    (loc.row / Constants.BoxSize) * Constants.BoxSize + (loc.col / Constants.BoxSize)
 
   private def toFilledSet(cells: Iterable[Cell]): Set[Filled] =
     cells.collect { case f: Filled => f }.toSet
@@ -256,26 +272,26 @@ object Solution {
     * @param board
     *   Board to get initial sets from
     * @return
-    *   Tuple of row sets, column sets, box sets, and empty cell locations set
+    *   Tuple of row sets, column sets, box sets, and blank cell locations set
     */
   private def initializeSolutionSets(board: Array[Array[Cell]]): (
       Vector[Set[Filled]], // Row sets
       Vector[Set[Filled]], // Column sets
       Vector[Set[Filled]], // Box sets
-      List[Location] // List of empty cell locations
+      List[Location] // List of blank cell locations
   ) = {
     val rowSets = board.map(row => toFilledSet(row)).toVector
     val colSets = board.transpose.map(col => toFilledSet(col)).toVector
     val subBoxSets = getSubBoxCells(board).map(toFilledSet).toVector
 
-    val emptyCellLocationSet =
+    val blankCellLocationSet =
       board.zipWithIndex.flatMap { case (row, rowIndex) =>
         row.zipWithIndex.collect {
           case (cell, colIndex) if cell == Blank => Location(rowIndex, colIndex)
         }
       }.toList
 
-    (rowSets, colSets, subBoxSets, emptyCellLocationSet)
+    (rowSets, colSets, subBoxSets, blankCellLocationSet)
   }
 
   /** Populate board with values until we find solution
@@ -288,10 +304,10 @@ object Solution {
     *   Set of all numbers in each column
     * @param boxSets
     *   Set of all numbers in each subbox
-    * @param emptyCellLocationSet
-    *   Set of all empty locations
-    * @param emptyCellSolutionSet
-    *   Set of all possible values for each empty cell
+    * @param blankCellLocationSet
+    *   Set of all blank locations
+    * @param blankCellSolutionSet
+    *   Set of all possible values for each blank cell
     * @return
     *   True if board is solved, else False
     */
@@ -300,29 +316,29 @@ object Solution {
       rowSets: Vector[Set[Filled]],
       colSets: Vector[Set[Filled]],
       boxSets: Vector[Set[Filled]],
-      emptyCellLocationSet: List[Location],
-      emptyCellSolutionSet: Map[
+      blankCellLocationSet: List[Location],
+      blankCellSolutionSet: Map[
         Location,
         Candidates
-      ] // TODO: make wrapper around location int, int?
+      ]
   ): Boolean = {
     // Base case - if there are no more blank spaces, we have solved the board
-    if emptyCellLocationSet.isEmpty then true
+    if blankCellLocationSet.isEmpty then true
     // Otherwise we must place a value in the next blank
     else
       // Find blank cell with the least number of candidates to try first
-      val bestBlank = emptyCellLocationSet.minBy(loc =>
-        Candidates.size(emptyCellSolutionSet(loc))
+      val bestBlank = blankCellLocationSet.minBy(loc =>
+        Candidates.size(blankCellSolutionSet(loc))
       )
 
-      emptyCellSolutionSet(bestBlank) match
+      blankCellSolutionSet(bestBlank) match
         case Empty            => false // No candidates for this cell, backtrack
         case NonEmpty(values) =>
           // Try each possible value for this cell
           values.exists { possibleValue =>
             val row = bestBlank.row
             val col = bestBlank.col
-            val boxIndex = getBoxIndex(row, col)
+            val boxIndex = getBoxIndex(bestBlank)
 
             // Place the value
             board(row)(col) = possibleValue
@@ -333,12 +349,12 @@ object Solution {
             val newBoxSets =
               boxSets.updated(boxIndex, boxSets(boxIndex) + possibleValue)
             val newEmptyCellLocationSet =
-              emptyCellLocationSet.filter(_ != bestBlank)
+              blankCellLocationSet.filter(_ != bestBlank)
             val newEmptyCellSolutionSet =
-              (emptyCellSolutionSet - bestBlank).map { case (loc, candidates) =>
+              (blankCellSolutionSet - bestBlank).map { case (loc, candidates) =>
                 val sameRow = loc.row == row
                 val sameCol = loc.col == col
-                val sameBox = getBoxIndex(loc.row, loc.col) == boxIndex
+                val sameBox = getBoxIndex(loc) == boxIndex
                 val isPeer = sameRow || sameCol || sameBox
                 if isPeer then
                   loc -> Candidates.remove(
