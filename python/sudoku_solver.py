@@ -21,7 +21,7 @@ class Solution:
             blank_solution_set[(row, col)] = Solution.POSSIBLE_CELL_VALUES - row_sets[row] - col_sets[col] - box_sets[self.getBoxIndex(row, col)]
 
         # Try to solve the board
-        if not self.populateBoard(board, col_sets, row_sets, box_sets, blank_loc_set, blank_solution_set):
+        if not self.populateBoard(board, blank_loc_set, blank_solution_set):
             raise ValueError("Invalid board - cannot solve with current solution sets")
 
     def getBoxIndex(self, row: int, col: int) -> int:
@@ -99,7 +99,7 @@ class Solution:
         
         return col_sets, row_sets, box_sets
 
-    def populateBoard(self, board: list[list[str]], col_sets: list[set[int]], row_sets: list[set[int]], box_sets: list[set[int]], blank_loc_set: list[tuple[int, int]], blank_solution_set: dict[tuple[int, int], frozenset[int]]) -> bool:
+    def populateBoard(self, board: list[list[str]], blank_loc_set: list[tuple[int, int]], blank_solution_set: dict[tuple[int, int], frozenset[int]]) -> bool:
         """
         Using the solution sets, do a depth first search to populate the board
         """
@@ -115,14 +115,6 @@ class Solution:
         curr_row, curr_col = best_blank
 
         for candidate in blank_candidates:
-            # Create immutable copies of the sets and update them
-            new_row_sets = [s.copy() for s in row_sets]
-            new_col_sets = [s.copy() for s in col_sets]
-            new_box_sets = [s.copy() for s in box_sets]
-            new_row_sets[curr_row].add(candidate)
-            new_col_sets[curr_col].add(candidate)
-            new_box_sets[self.getBoxIndex(curr_row, curr_col)].add(candidate)
-
             # Update board
             board[curr_row][curr_col] = str(candidate)
 
@@ -135,7 +127,7 @@ class Solution:
                 if row == curr_row or col == curr_col or self.getBoxIndex(row, col) == self.getBoxIndex(curr_row, curr_col):
                     new_blank_solution_set[(row, col)] = blank_solution_set[(row, col)] - {candidate}
 
-            if self.populateBoard(board, new_col_sets, new_row_sets, new_box_sets, new_blank_loc_set, new_blank_solution_set):
+            if self.populateBoard(board, new_blank_loc_set, new_blank_solution_set):
                 return True
 
             # Backtrack: restore board
