@@ -40,8 +40,8 @@ object Solution {
         // Check if all characters are valid (digits or blank)
         && board.forall(row => row.forall(cell => PossibleDigits.contains(cell) || cell == BlankCell))
         // Check for duplicates in rows, columns, and boxes
-        && board.forall(row => isSetValid(row))
-        && board.transpose.forall(col => isSetValid(col))
+        && board.forall(row => isSetValid(row.toList))
+        && board.transpose.forall(col => isSetValid(col.toList))
         && areSubBoxesValid(board)
     }
 
@@ -52,22 +52,23 @@ object Solution {
       * @param set List of values to check
       * @return True if set contains no duplicates after removing empty cells
       */
-    def isSetValid(set: Array[Char]): Boolean = {
+    def isSetValid(set: List[Char]): Boolean = {
         // Filter blank cells
         val nonBlankCells = set.filter(_ != BlankCell)
 
-        // No duplicates in row
+        // No duplicates in set
         nonBlankCells.distinct.length == nonBlankCells.length
     }
 
+    // TODO: do i want lists or sets or indexed set?
     /**
-      * Checks if subboxes do not contain duplicates and contain valid digits
+      * Get lists of all values in each subbox.
       *
-      * @param board Sudoku board
-      * @return True if all subboxes are valid
+      * @param board Board to get values from
+      * @return List of List of Chars. Each list contains the values of a subbox
       */
-    def areSubBoxesValid(board: Array[Array[Char]]): Boolean = {
-        SubBoxIndecies.forall(subBoxIndex =>
+    def getSubBoxCells(board: Array[Array[Char]]): List[List[Char]] = {
+        SubBoxIndecies.map(subBoxIndex =>
                 val rowStart = (subBoxIndex / BoxSize) * BoxSize
                 val colStart = (subBoxIndex % BoxSize) * BoxSize
 
@@ -77,9 +78,18 @@ object Solution {
                     col <- colStart until colStart + BoxSize
                 } yield board(row)(col)
 
-                // Is box set valid
-                isSetValid(subBoxCells.toArray)
-            )
+                subBoxCells.toList
+            ).toList
+    }
+
+    /**
+      * Checks if subboxes do not contain duplicates and contain valid digits
+      *
+      * @param board Sudoku board
+      * @return True if all subboxes are valid
+      */
+    def areSubBoxesValid(board: Array[Array[Char]]): Boolean = {
+        getSubBoxCells(board).forall(subBoxCells => isSetValid(subBoxCells))
     }
 
     /**
@@ -98,14 +108,33 @@ object Solution {
     def getBoxIndex(row: Int, col: Int): Int =
         (row / BoxSize) * BoxSize + (col / BoxSize)
 
+    /**
+      * Get initial number sets for each row, column, subbox. Also get list of all blank locations.
+      * Each number set contains all the non blanks for that row or column or subbox.
+      *
+      * @param board Board to get initial sets from
+      * @return Tuple of row sets, column sets, box sets, and empty cell locations set
+      */
     def initializeSolutionSets(board: Array[Array[Char]]): (
-        Array[Int], // Row sets
-        Array[Int], // Column sets
-        Array[Int],  // Box sets
-        Array[(Int, Int)] // List of empty cell locations
+        List[Set[Char]],  // Row sets
+        List[Set[Char]],  // Column sets
+        List[Set[Char]],  // Box sets
+        List[(Int, Int)]  // List of empty cell locations
     ) = {
-        ???
-     // FILTER   // val rowSets = board.map()
+        val rowSets = board.map(row => row.toSet - BlankCell).toList
+        val colSets = board.transpose.map(col => col.toSet - BlankCell).toList
+        val subBoxSets = getSubBoxCells(board).map(subBoxCells => subBoxCells.toSet - BlankCell).toList
+
+        val emptyCellLocationSet =
+            board.zipWithIndex
+                .flatMap { case (row, rowIndex) => 
+                        row.zipWithIndex.collect {
+                            case (cell, colIndex) if cell == BlankCell => (rowIndex, colIndex)
+                        }
+                    }
+            .toList
+
+        (rowSets, colSets, subBoxSets, emptyCellLocationSet)
     }
 
 }
