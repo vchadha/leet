@@ -1,7 +1,11 @@
+import scala.collection.View.Fill
 object Constants {
   // Constants for the Sudoku board
   val BoardSize: Int = 9
   val BoxSize: Int = 3
+  val SubBoxIndices: Range = (0 until BoxSize * BoxSize)
+  val ValidDigits: Set[Char] = ('1' to '9').toSet
+  val BlankCellChar: Char = '.'
 }
 
 // Sealed trait to represent candidates for a cell
@@ -30,27 +34,29 @@ object Candidates {
 // Sealed trait to represent cell values
 sealed trait Cell
 case object Blank extends Cell
+case object Invalid extends Cell
 case class Filled(digit: Char) extends Cell
 
 object Cell {
-  val BlankCellChar: Char = '.'
-
   def fromChar(c: Char): Cell = c match
-    case BlankCellChar => Blank
-    case d             => Filled(d)
+    case Constants.BlankCellChar => Blank
+    case d             => Filled.fromChar(d).getOrElse(Invalid)
 
-  def toChar(cell: Cell): Char = cell match
-    case Blank     => BlankCellChar
-    case Filled(d) => d
+  def toChar(cell: Cell): Either[ValidationError, Char] = cell match
+    case Blank     => Right(Constants.BlankCellChar)
+    case Filled(d) => Right(d)
+    case Invalid => Left(ValidationError.InvalidCellConversion())
 }
 
 object Filled {
-  val validDigits: Set[Char] = ('1' to '9').toSet
+  val validFilled: Set[Filled] = Constants.ValidDigits.map(Filled.apply)
 
   def fromChar(c: Char): Option[Filled] =
-    if validDigits.contains(c) then Some(Filled(c))
+    if Constants.ValidDigits.contains(c) then Some(Filled(c))
     else None
 }
+
+case class Location(row: Int, col: Int)
 
 sealed trait ValidationError {
   def message: String
@@ -59,6 +65,10 @@ sealed trait ValidationError {
 object ValidationError {
   case object InvalidBoardSize extends ValidationError {
     def message = s"Board must be ${Constants.BoardSize}x${Constants.BoardSize}"
+  }
+
+  case class InvalidCellConversion() extends ValidationError {
+    def message = "Attempted to convert cell of type Invalid to Char"
   }
 
   case class InvalidCell(row: Int, col: Int, char: Char) extends ValidationError {
@@ -79,15 +89,6 @@ object ValidationError {
 }
 
 object Solution {
-  // Constants for the Sudoku board
-  val BoardSize: Int = 9
-  val BoxSize: Int = 3
-  val SubBoxIndecies: Range = (0 until BoxSize * BoxSize)
-
-  // Set of valid digits for Sudoku
-  // TODO: should this be a set? or something else? indexedSeq?
-  val PossibleDigits: Set[Filled] = ('1' to '9').map(Filled.apply).toSet
-
   // TODO: make naming consistent
 
   /** Solves a given Sudoku puzzle by filling the empty cells. Modifies the
@@ -113,12 +114,10 @@ object Solution {
 
         // Create a map of possible values for each empty cell
         val emptyCellSolutionSet = emptyCellLocationSet.map { location =>
-          val row = location._1
-          val col = location._2
-          val boxIndex = getBoxIndex(row, col)
+          val boxIndex = getBoxIndex(location.row, location.col)
 
           val possibleValues =
-            PossibleDigits -- rowSets(row) -- colSets(col) -- boxSets(boxIndex)
+            Filled.validFilled -- rowSets(location.row) -- colSets(location.col) -- boxSets(boxIndex)
 
           location -> Candidates(possibleValues)
         }.toMap
@@ -139,8 +138,8 @@ object Solution {
 
         // Convert the cell board back to characters for the final output
         for {
-          row <- 0 until BoardSize
-          col <- 0 until BoardSize
+          row <- 0 until Constants.BoardSize
+          col <- 0 until Constants.BoardSize
         } board(row)(col) = Cell.toChar(cellBoard(row)(col))
   }
 
@@ -168,7 +167,7 @@ object Solution {
   def validateBoard(board: Array[Array[Cell]]): Either[List[ValidationError], Unit] = {
     // Check if the board is 9x9
     val dimensionErrors: List[ValidationError] =
-      if board.length != BoardSize || board.exists(_.length != BoardSize)
+      if board.length != Constants.BoardSize || board.exists(_.length != Constants.BoardSize)
       then List(ValidationError.InvalidBoardSize)
       else Nil
 
@@ -178,10 +177,8 @@ object Solution {
         (cell, colIndex) <- row.zipWithIndex
         error <- cell match {
           case Blank     => None
-          // TODO: it doesn't seem like we are using fromChar effectively? is it needed? what does that helper function do?
-          case Filled(char) => Option.when(!Filled.validDigits.contains(char))(
-            ValidationError.InvalidCell(rowIndex, colIndex, char)
-          )
+          case Filled => None
+          case Invalid => Some(ValidationError.InvalidCell(rowIndex, colIndex, '?'))
         }
       } yield error).toList
 
@@ -205,23 +202,6 @@ object Solution {
     if allErrors.isEmpty then Right(()) else Left(allErrors)
   }
 
-  /** Determines if a set is valid by checking for no duplicates. Filters out
-    * empty cells first.
-    *
-    * @param set
-    *   List of values to check
-    * @return
-    *   True if set contains no duplicates after removing empty cells
-    */
-  def isSetValid(set: List[Cell]): Boolean = {
-    // Filter blank cells
-    val nonBlankCells = set.filter(_ != Blank)
-
-    // No duplicates in set
-    nonBlankCells.distinct.length == nonBlankCells.length
-  }
-
-  // TODO: do i want lists or sets or indexed set?
   /** Get lists of all values in each subbox.
     *
     * @param board
@@ -230,15 +210,15 @@ object Solution {
     *   List of List of Chars. Each list contains the values of a subbox
     */
   def getSubBoxCells(board: Array[Array[Cell]]): List[List[Cell]] = {
-    SubBoxIndecies
+    Constants.SubBoxIndices
       .map(subBoxIndex =>
-        val rowStart = (subBoxIndex / BoxSize) * BoxSize
-        val colStart = (subBoxIndex % BoxSize) * BoxSize
+        val rowStart = (subBoxIndex / Constants.BoxSize) * Constants.BoxSize
+        val colStart = (subBoxIndex % Constants.BoxSize) * Constants.BoxSize
 
         // Get all cells for box
         val subBoxCells = for {
-          row <- rowStart until rowStart + BoxSize
-          col <- colStart until colStart + BoxSize
+          row <- rowStart until rowStart + Constants.BoxSize
+          col <- colStart until colStart + Constants.BoxSize
         } yield board(row)(col)
 
         subBoxCells.toList
@@ -246,18 +226,8 @@ object Solution {
       .toList
   }
 
-  /** Checks if subboxes do not contain duplicates and contain valid digits
-    *
-    * @param board
-    *   Sudoku board
-    * @return
-    *   True if all subboxes are valid
-    */
-  def areSubBoxesValid(board: Array[Array[Cell]]): Boolean = {
-    getSubBoxCells(board).forall(subBoxCells => isSetValid(subBoxCells))
-  }
-
   // TODO: do i need this?
+  // TODO: think of types in the entire program - should i use something else?
   /** Get the index of the sub square for a given row and column.
     *
     * | 0   | 1   | 2   |
@@ -273,10 +243,10 @@ object Solution {
     * @return
     *   Index of the sub square (0 to 8)
     */
-  def getBoxIndex(row: Int, col: Int): Int =
-    (row / BoxSize) * BoxSize + (col / BoxSize)
+  private def getBoxIndex(row: Int, col: Int): Int =
+    (row / Constants.BoxSize) * Constants.BoxSize + (col / Constants.BoxSize)
 
-  def toFilledSet(cells: Iterable[Cell]): Set[Filled] =
+  private def toFilledSet(cells: Iterable[Cell]): Set[Filled] =
     cells.collect { case f: Filled => f }.toSet
 
   /** Get initial number sets for each row, column, subbox. Also get list of all
@@ -288,11 +258,11 @@ object Solution {
     * @return
     *   Tuple of row sets, column sets, box sets, and empty cell locations set
     */
-  def initializeSolutionSets(board: Array[Array[Cell]]): (
+  private def initializeSolutionSets(board: Array[Array[Cell]]): (
       Vector[Set[Filled]], // Row sets
       Vector[Set[Filled]], // Column sets
       Vector[Set[Filled]], // Box sets
-      List[(Int, Int)] // List of empty cell locations
+      List[Location] // List of empty cell locations
   ) = {
     val rowSets = board.map(row => toFilledSet(row)).toVector
     val colSets = board.transpose.map(col => toFilledSet(col)).toVector
@@ -301,7 +271,7 @@ object Solution {
     val emptyCellLocationSet =
       board.zipWithIndex.flatMap { case (row, rowIndex) =>
         row.zipWithIndex.collect {
-          case (cell, colIndex) if cell == Blank => (rowIndex, colIndex)
+          case (cell, colIndex) if cell == Blank => Location(rowIndex, colIndex)
         }
       }.toList
 
@@ -325,14 +295,14 @@ object Solution {
     * @return
     *   True if board is solved, else False
     */
-  def populateBoard(
+  private def populateBoard(
       board: Array[Array[Cell]],
       rowSets: Vector[Set[Filled]],
       colSets: Vector[Set[Filled]],
       boxSets: Vector[Set[Filled]],
-      emptyCellLocationSet: List[(Int, Int)],
+      emptyCellLocationSet: List[Location],
       emptyCellSolutionSet: Map[
-        (Int, Int),
+        Location,
         Candidates
       ] // TODO: make wrapper around location int, int?
   ): Boolean = {
@@ -350,8 +320,8 @@ object Solution {
         case NonEmpty(values) =>
           // Try each possible value for this cell
           values.exists { possibleValue =>
-            val row = bestBlank._1
-            val col = bestBlank._2
+            val row = bestBlank.row
+            val col = bestBlank.col
             val boxIndex = getBoxIndex(row, col)
 
             // Place the value
@@ -366,9 +336,9 @@ object Solution {
               emptyCellLocationSet.filter(_ != bestBlank)
             val newEmptyCellSolutionSet =
               (emptyCellSolutionSet - bestBlank).map { case (loc, candidates) =>
-                val sameRow = loc._1 == row
-                val sameCol = loc._2 == col
-                val sameBox = getBoxIndex(loc._1, loc._2) == boxIndex
+                val sameRow = loc.row == row
+                val sameCol = loc.col == col
+                val sameBox = getBoxIndex(loc.row, loc.col) == boxIndex
                 val isPeer = sameRow || sameCol || sameBox
                 if isPeer then
                   loc -> Candidates.remove(
