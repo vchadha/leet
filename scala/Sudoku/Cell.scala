@@ -7,10 +7,6 @@ object Cell {
   def fromChar(c: Char): Option[Cell] = c match
     case Constants.BlankCellChar => Some(Blank)
     case d                       => Filled.fromChar(d)
-
-  def toChar(cell: Cell): Char = cell match
-    case Blank     => Constants.BlankCellChar
-    case Filled(d) => d
 }
 
 object Filled {

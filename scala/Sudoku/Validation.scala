@@ -1,5 +1,5 @@
 object Validation {
-  private def convertBoard(
+  def convertBoard(
       board: Array[Array[Char]]
   ): Either[List[ValidationError], Array[Array[Cell]]] = {
     val results: Array[Array[Either[ValidationError, Cell]]] =
@@ -13,7 +13,7 @@ object Validation {
 
     val errors = results.flatten.collect { case Left(e) => e }.toList
 
-    // TODO: we can do better here.
+    // getOrElse should never be hit because we ensure all values are Right
     if errors.isEmpty then Right(results.map(_.map(_.getOrElse(Blank))))
     else Left(errors)
   }
@@ -41,9 +41,9 @@ object Validation {
     * @return
     *   True if board is valid else False
     */
-  def validateAndConvertBoard(
-      board: Array[Array[Char]]
-  ): Either[List[ValidationError], Array[Array[Cell]]] = {
+  def validateBoard(
+      board: Array[Array[Cell]]
+  ): Either[List[ValidationError], Unit] = {
     // Check if the board is 9x9
     val dimensionErrors: List[ValidationError] =
       if board.length != Constants.BoardSize || board.exists(
@@ -52,36 +52,32 @@ object Validation {
       then List(ValidationError.InvalidBoardSize)
       else Nil
 
-    // TODO: what is the better scala way to do this?
-    convertBoard(board) match
-      case Left(errors) => Left(dimensionErrors ++ errors)
-      case Right(cellBoard) =>
-        val rowErrors: List[ValidationError] =
-          cellBoard.zipWithIndex.flatMap { case (row, rowIndex) =>
-            findDuplicates(
-              row.toList,
-              char => ValidationError.DuplicateInRow(rowIndex, char)
-            )
-          }.toList
+    val rowErrors: List[ValidationError] =
+      board.zipWithIndex.flatMap { case (row, rowIndex) =>
+        findDuplicates(
+          row.toList,
+          char => ValidationError.DuplicateInRow(rowIndex, char)
+        )
+      }.toList
 
-        val colErrors: List[ValidationError] =
-          cellBoard.transpose.zipWithIndex.flatMap { case (col, colIndex) =>
-            findDuplicates(
-              col.toList,
-              char => ValidationError.DuplicateInCol(colIndex, char)
-            )
-          }.toList
+    val colErrors: List[ValidationError] =
+      board.transpose.zipWithIndex.flatMap { case (col, colIndex) =>
+        findDuplicates(
+          col.toList,
+          char => ValidationError.DuplicateInCol(colIndex, char)
+        )
+      }.toList
 
-        val boxErrors: List[ValidationError] =
-          Utils.getSubBoxCells(cellBoard).zipWithIndex.flatMap { case (box, boxIndex) =>
-            findDuplicates(
-              box,
-              char => ValidationError.DuplicateInBox(boxIndex, char)
-            )
-          }.toList
+    val boxErrors: List[ValidationError] =
+      Utils.getSubBoxCells(board).zipWithIndex.flatMap { case (box, boxIndex) =>
+        findDuplicates(
+          box,
+          char => ValidationError.DuplicateInBox(boxIndex, char)
+        )
+      }.toList
 
-        val allErrors = dimensionErrors ++ rowErrors ++ colErrors ++ boxErrors
+    val allErrors = dimensionErrors ++ rowErrors ++ colErrors ++ boxErrors
 
-        if allErrors.isEmpty then Right(cellBoard) else Left(allErrors)
+    if allErrors.isEmpty then Right(()) else Left(allErrors)
   }
 }

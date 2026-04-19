@@ -22,22 +22,4 @@ object Utils {
       )
       .toList
   }
-
-  /** Get the index of the sub square for a given row and column.
-    *
-    * | 0   | 1   | 2   |
-    * |:----|:----|:----|
-    * | 3   | 4   | 5   |
-    * | --- | --- | --- |
-    * | 6   | 7   | 8   |
-    *
-    * @param row
-    *   Row index
-    * @param col
-    *   Column index
-    * @return
-    *   Index of the sub square (0 to 8)
-    */
-  def getBoxIndex(loc: Location): Int =
-    (loc.row / Constants.BoxSize) * Constants.BoxSize + (loc.col / Constants.BoxSize)
 }

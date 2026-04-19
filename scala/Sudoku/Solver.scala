@@ -1,4 +1,4 @@
-/** Case class to be propogated through recursive calls.
+/** Case class to be propagated through recursive calls.
   *
   * @param blankCells
   *   List of locations of blank cells
@@ -12,7 +12,7 @@ case class SolverState(
 
 // Output of solver
 // Map of blank locations to filled number
-type Solution = Map[Location, Filled]
+type SolutionMap = Map[Location, Filled]
 
 object Solution {
 
@@ -24,7 +24,12 @@ object Solution {
     *   denoted by '.'.
     */
   def solveSudoku(board: Array[Array[Char]]): Unit = {
-    val cellBoard = Validation.validateAndConvertBoard(board) match
+    val cellBoard = (
+      for {
+        cellBoard <- Validation.convertBoard(board)
+        _ <- Validation.validateBoard(cellBoard)
+      } yield cellBoard
+    ) match
       case Left(errors) =>
         val message = errors.map(_.message).mkString("\n")
         throw new IllegalArgumentException(s"Invalid board:\n$message")
@@ -47,6 +52,10 @@ object Solution {
   }
 
   private def buildSolverState(board: Array[Array[Cell]]): SolverState = {
+    // Compute set of numbers in rows, cols, and sub boxes
+    // These are only used to get possible values for the initial blank cells
+    // Afterwards we simply update the candidates for each blank cell and never
+    // need to recompute the row, col, or subbox sets
     val rowSets = board.map(row => CellHelpers.toFilledSet(row)).toVector
     val colSets =
       board.transpose.map(col => CellHelpers.toFilledSet(col)).toVector
@@ -62,13 +71,11 @@ object Solution {
 
     // Create a map of possible values for each blank cell
     val candidates = blankCells.map { location =>
-      val boxIndex = Utils.getBoxIndex(location)
-
       val possibleValues =
         Filled.validFilled
           -- rowSets(location.row)
           -- colSets(location.col)
-          -- subBoxSets(boxIndex)
+          -- subBoxSets(location.subBoxIndex)
 
       location -> Candidates(possibleValues)
     }.toMap
@@ -79,7 +86,7 @@ object Solution {
     )
   }
 
-  private def solve(solverState: SolverState): Option[Solution] = {
+  private def solve(solverState: SolverState): Option[SolutionMap] = {
     // If there are no blank cells to traverse return empty map
     // There are no more cells to place
     if solverState.blankCells.isEmpty then
@@ -98,7 +105,7 @@ object Solution {
 
         // Try each possible value for this cell
         case NonEmpty(values) =>
-          values.foldLeft(Option.empty[Solution]) {
+          values.foldLeft(Option.empty[SolutionMap]) {
             case (soln @ Some(_), _)  => soln
             case (None, possibleValue) =>
               // Remove best blank from list of location
@@ -110,7 +117,7 @@ object Solution {
               val newCandidates =
                 (solverState.candidates - bestBlank).map {
                   case (loc, candidates) =>
-                    if Location.isPeer(bestBlank, loc) then
+                    if loc.isPeerOf(bestBlank) then
                       loc -> Candidates.remove(
                         candidates = candidates,
                         value = possibleValue
