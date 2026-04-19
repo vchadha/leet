@@ -163,16 +163,16 @@ object Solution {
     *   Tuple of row sets, column sets, box sets, and empty cell locations set
     */
   def initializeSolutionSets(board: Array[Array[Char]]): (
-      List[Set[Char]], // Row sets
-      List[Set[Char]], // Column sets
-      List[Set[Char]], // Box sets
-      List[(Int, Int)] // List of empty cell locations
+      Vector[Set[Char]], // Row sets
+      Vector[Set[Char]], // Column sets
+      Vector[Set[Char]], // Box sets
+      List[(Int, Int)]   // List of empty cell locations
   ) = {
-    val rowSets = board.map(row => row.toSet - BlankCell).toList
-    val colSets = board.transpose.map(col => col.toSet - BlankCell).toList
+    val rowSets = board.map(row => row.toSet - BlankCell).toVector
+    val colSets = board.transpose.map(col => col.toSet - BlankCell).toVector
     val subBoxSets = getSubBoxCells(board)
       .map(subBoxCells => subBoxCells.toSet - BlankCell)
-      .toList
+      .toVector
 
     val emptyCellLocationSet =
       board.zipWithIndex.flatMap { case (row, rowIndex) =>
@@ -203,9 +203,9 @@ object Solution {
     */
   def populateBoard(
       board: Array[Array[Char]],
-      rowSets: List[Set[Char]],
-      colSets: List[Set[Char]],
-      boxSets: List[Set[Char]],
+      rowSets: Vector[Set[Char]],
+      colSets: Vector[Set[Char]],
+      boxSets: Vector[Set[Char]],
       emptyCellLocationSet: List[(Int, Int)],
       emptyCellSolutionSet: Map[(Int, Int), Set[Char]]
   ): Boolean = {
@@ -265,6 +265,7 @@ object Solution {
 
 }
 
+// TODO: make a better framework for testing scala code
 object SudokuTest {
   def main(args: Array[String]): Unit = {
     val board: Array[Array[Char]] = Array(
