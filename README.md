@@ -13,19 +13,13 @@ scala/           Scala solutions (sbt project, one package per puzzle)
 
 ### Python
 
-| Puzzle | File | Complexity |
-|--------|------|------------|
-| 🎮 Conway's Game of Life | `python/game_of_life.py` | O(rows × cols) |
-| 🧩 Sudoku Solver | `python/sudoku_solver.py` | Worst-case exponential |
-| 🪞 Mirror Distance | `python/mirror_distance_int.py` | O(log n) time, O(1) space |
-| 2️⃣ Two Sum | `python/two_sum.py` | O(n) time, O(n) space |
-| ➕ Add Two Numbers | `python/add_two_numbers.py` | O(max(m,n)) |
-
-### Scala
-
-| Puzzle | Package | Complexity |
-|--------|---------|------------|
-| 🧩 Sudoku Solver | `sudoku` | Worst-case exponential, MRV heuristic |
+| Puzzle | Python File | Scala Package | Complexity |
+|--------|------|------------|-----|
+| 🎮 Conway's Game of Life | `game_of_life.py` | | O(rows × cols) |
+| 🧩 Sudoku Solver | `sudoku_solver.py` | `sudoku` | Worst-case exponential |
+| 🪞 Mirror Distance | `mirror_distance_int.py` | | O(log n) time, O(1) space |
+| 2️⃣ Two Sum | `two_sum.py` | | O(n) time, O(n) space |
+| ➕ Add Two Numbers | `add_two_numbers.py` | | O(max(m,n)) |
 
 ## Requirements
 
@@ -35,4 +29,4 @@ scala/           Scala solutions (sbt project, one package per puzzle)
 
 ### Scala
 - JDK 11+
-- sbt — see [`scala/README.md`](scala/README.md) for setup
+- sbt/scala — see [`scala/README.md`](scala/README.md) for setup
