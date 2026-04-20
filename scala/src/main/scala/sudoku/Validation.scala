@@ -1,4 +1,7 @@
+package sudoku
+
 object Validation {
+
   def convertBoard(
       board: Array[Array[Char]]
   ): Either[List[ValidationError], Array[Array[Cell]]] = {
@@ -69,15 +72,20 @@ object Validation {
       }.toList
 
     val boxErrors: List[ValidationError] =
-      Utils.getSubBoxCells(board).zipWithIndex.flatMap { case (box, boxIndex) =>
-        findDuplicates(
-          box,
-          char => ValidationError.DuplicateInBox(boxIndex, char)
-        )
-      }.toList
+      Utils
+        .getSubBoxCells(board)
+        .zipWithIndex
+        .flatMap { case (box, boxIndex) =>
+          findDuplicates(
+            box,
+            char => ValidationError.DuplicateInBox(boxIndex, char)
+          )
+        }
+        .toList
 
     val allErrors = dimensionErrors ++ rowErrors ++ colErrors ++ boxErrors
 
     if allErrors.isEmpty then Right(()) else Left(allErrors)
   }
+
 }

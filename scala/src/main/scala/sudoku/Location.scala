@@ -1,9 +1,12 @@
+package sudoku
+
 case class Location(row: Int, col: Int):
+
   def isPeerOf(other: Location): Boolean =
     val sameRow = row == other.row
     val sameCol = col == other.col
     val sameBox = subBoxIndex == other.subBoxIndex
-    
+
     sameRow || sameCol || sameBox
 
   /** Get the index of the sub square for a given row and column.

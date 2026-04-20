@@ -1,9 +1,12 @@
+package sudoku
+
 // Sealed trait to represent candidates for a cell
 sealed trait Candidates
-case object Empty extends Candidates
+case object Empty                        extends Candidates
 case class NonEmpty(values: Set[Filled]) extends Candidates
 
 object Candidates {
+
   // Smart constructor — returns Empty if the set is blank
   def apply(values: Set[Filled]): Candidates =
     if values.isEmpty then Empty
@@ -19,4 +22,5 @@ object Candidates {
     candidates match
       case Empty            => 0
       case NonEmpty(values) => values.size
+
 }

@@ -1,3 +1,5 @@
+package sudoku
+
 /** Case class to be propagated through recursive calls.
   *
   * @param blankCells
@@ -16,18 +18,16 @@ type SolutionMap = Map[Location, Filled]
 
 object Solution {
 
-  /** Solves a given Sudoku puzzle by filling the blank cells. Modifies the
-    * input board on return.
+  /** Solves a given Sudoku puzzle by filling the blank cells. Modifies the input board on return.
     *
     * @param board
-    *   A 9x9 2D array representing the Sudoku board, where blank cells are
-    *   denoted by '.'.
+    *   A 9x9 2D array representing the Sudoku board, where blank cells are denoted by '.'.
     */
   def solveSudoku(board: Array[Array[Char]]): Unit = {
     val cellBoard = (
       for {
         cellBoard <- Validation.convertBoard(board)
-        _ <- Validation.validateBoard(cellBoard)
+        _         <- Validation.validateBoard(cellBoard)
       } yield cellBoard
     ) match
       case Left(errors) =>
@@ -86,7 +86,7 @@ object Solution {
     )
   }
 
-  private def solve(solverState: SolverState): Option[SolutionMap] = {
+  private def solve(solverState: SolverState): Option[SolutionMap] =
     // If there are no blank cells to traverse return empty map
     // There are no more cells to place
     if solverState.blankCells.isEmpty then
@@ -95,9 +95,8 @@ object Solution {
     // Otherwise we must place a value in the next blank
     else
       // Find blank cell with the least number of candidates to try first
-      val bestBlank = solverState.blankCells.minBy(loc =>
-        Candidates.size(solverState.candidates(loc))
-      )
+      val bestBlank =
+        solverState.blankCells.minBy(loc => Candidates.size(solverState.candidates(loc)))
 
       solverState.candidates(bestBlank) match
         // No candidates for this cell, backtrack
@@ -106,7 +105,7 @@ object Solution {
         // Try each possible value for this cell
         case NonEmpty(values) =>
           values.foldLeft(Option.empty[SolutionMap]) {
-            case (soln @ Some(_), _)  => soln
+            case (soln @ Some(_), _)   => soln
             case (None, possibleValue) =>
               // Remove best blank from list of location
               val newBlankLocations =
@@ -115,15 +114,14 @@ object Solution {
               // Remove best blank from list of candidates
               // and update each peer
               val newCandidates =
-                (solverState.candidates - bestBlank).map {
-                  case (loc, candidates) =>
-                    if loc.isPeerOf(bestBlank) then
-                      loc -> Candidates.remove(
-                        candidates = candidates,
-                        value = possibleValue
-                      )
-                    // If not a peer, do not update
-                    else loc -> candidates
+                (solverState.candidates - bestBlank).map { case (loc, candidates) =>
+                  if loc.isPeerOf(bestBlank) then
+                    loc -> Candidates.remove(
+                      candidates = candidates,
+                      value = possibleValue
+                    )
+                  // If not a peer, do not update
+                  else loc -> candidates
                 }
 
               // Call solve with new solution and add placed value to solution map
@@ -131,6 +129,5 @@ object Solution {
                 _ + (bestBlank -> possibleValue)
               )
           }
-  }
 
 }

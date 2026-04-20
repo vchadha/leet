@@ -1,4 +1,4 @@
-# Ignore everything
+# Ignore everything by default
 /*
 /*/
 .*
@@ -7,15 +7,27 @@
 !.gitignore
 !.github/
 
-# Whitelist source files and documentation
+# Whitelist documentation
 !README.md
 !LICENSE
 !*.md
 
-# Whitelist python source files
+# Whitelist Python
 !python/
 !python/*.py
 
-# Whitelist scala source files
+# Whitelist Scala
 !scala/
-!scala/*.scala
+scala/**
+
+!scala/README.md
+!scala/.scalafmt.conf
+!scala/build.sbt
+
+!scala/project/
+scala/project/**
+!scala/project/build.properties
+!scala/project/plugins.sbt
+
+!scala/src/
+!scala/src/**

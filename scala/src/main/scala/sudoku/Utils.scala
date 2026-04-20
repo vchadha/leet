@@ -1,4 +1,7 @@
+package sudoku
+
 object Utils {
+
   /** Get lists of all values in each subbox.
     *
     * @param board
@@ -6,7 +9,7 @@ object Utils {
     * @return
     *   List of List of Chars. Each list contains the values of a subbox
     */
-  def getSubBoxCells(board: Array[Array[Cell]]): List[List[Cell]] = {
+  def getSubBoxCells(board: Array[Array[Cell]]): List[List[Cell]] =
     Constants.SubBoxIndices
       .map(subBoxIndex =>
         val rowStart = (subBoxIndex / Constants.BoxSize) * Constants.BoxSize
@@ -21,5 +24,5 @@ object Utils {
         subBoxCells.toList
       )
       .toList
-  }
+
 }
