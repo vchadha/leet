@@ -56,10 +56,9 @@ object Solution {
         case Empty => None
 
         // Try each possible value for this cell
-        case NonEmpty(values) =>
-          values.foldLeft(Option.empty[SolutionMap]) {
-            case (soln @ Some(_), _)   => soln
-            case (None, possibleValue) =>
+        case NonEmpty(values) => 
+          values.collectFirst(
+            Function.unlift { possibleValue =>
               // Remove best blank from list of location
               val newBlankLocations =
                 solverState.blankCells.filter(_ != bestBlank)
@@ -77,10 +76,7 @@ object Solution {
                   else loc -> candidates
                 }
 
-              // Call solve with new solution and add placed value to solution map
-              solve(SolverState(newBlankLocations, newCandidates)).map(
-                _ + (bestBlank -> possibleValue)
-              )
-          }
-
+              solve(SolverState(newBlankLocations, newCandidates)).map(_ + (bestBlank -> possibleValue))
+            }
+          )
 }
