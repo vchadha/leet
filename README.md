@@ -13,10 +13,10 @@ scala/           Scala solutions (sbt project, one package per puzzle)
 
 ### Python
 
-| Puzzle | Python File | Scala Package | Complexity |
+| Puzzle | Python File | Scala File | Complexity |
 |--------|------|------------|-----|
 | 🎮 Conway's Game of Life | `game_of_life.py` | | O(rows × cols) |
-| 🧩 Sudoku Solver | `sudoku_solver.py` | `sudoku` | Worst-case exponential |
+| 🧩 Sudoku Solver | `sudoku_solver.py` | `sudoku/Solver.scala` | Worst-case exponential |
 | 🪞 Mirror Distance | `mirror_distance_int.py` | | O(log n) time, O(1) space |
 | 2️⃣ Two Sum | `two_sum.py` | | O(n) time, O(n) space |
 | ➕ Add Two Numbers | `add_two_numbers.py` | | O(max(m,n)) |
