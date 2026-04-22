@@ -21,6 +21,7 @@
 scala/**
 
 !scala/README.md
+!scala/.scalafix.conf
 !scala/.scalafmt.conf
 !scala/build.sbt
 
@@ -28,6 +29,7 @@ scala/**
 scala/project/**
 !scala/project/build.properties
 !scala/project/plugins.sbt
+!scala/project/Versions.scala
 
 !scala/src/
 !scala/src/**

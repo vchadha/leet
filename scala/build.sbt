@@ -1,11 +1,17 @@
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := Versions.scala
 ThisBuild / organization := "puzzles"
+inThisBuild(
+  List(
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+)
 
 lazy val root = (project in file("."))
   .settings(
     name := "programming-puzzles",
 
-    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test,
+    libraryDependencies += "org.scalameta" %% "munit" % Versions.testing.munit % Test,
     testFrameworks += new TestFramework("munit.Framework"),
 
     // Run tests in parallel across packages
@@ -21,3 +27,33 @@ lazy val root = (project in file("."))
       "-Yexplicit-nulls"
     )
   )
+
+addCommandAlias(
+  "format",
+  Seq(
+    "scalafixAll",
+    "scalafmtAll",
+    "Test / scalafmt"
+  ).mkString(";", ";", "")
+)
+
+addCommandAlias(
+  "formatCheck",
+  Seq(
+    "scalafixAll --check",
+    "scalafmtCheckAll",
+    "Test / scalafmtCheck",
+  ).mkString(";", ";", "")
+)
+
+addCommandAlias(
+  "validate",
+  Seq(
+    "formatCheck",
+    "undeclaredCompileDependenciesTest",
+    "coverage",
+    "test",
+    "coverageReport",
+    "coverageAggregate"
+  ).mkString(";", ";", "")
+)
